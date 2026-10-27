@@ -23,6 +23,7 @@ jobs:
         run: |
           zip -r "bili-brorrow-account-${GITHUB_REF_NAME}.zip" \
             manifest.json \
+            auto-quality.js \
             background.js \
             bangumi-playinfo.js \
             popup.css \

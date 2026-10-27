@@ -1,6 +1,6 @@
 const RULE_IDS = [1, 2];
 const ALL_RULE_IDS = [1, 2, 3, 4];
-const STORAGE_DEFAULTS = { account: null, enabled: false };
+const STORAGE_DEFAULTS = { account: null, enabled: false, autoQuality: true };
 
 function normalizeAccount(input) {
   const value = input.trim();
@@ -16,7 +16,8 @@ async function getStoredState() {
   const configured = Boolean(settings.account);
   return {
     configured,
-    enabled: configured && settings.enabled
+    enabled: configured && settings.enabled,
+    autoQuality: settings.autoQuality
   };
 }
 
@@ -79,7 +80,8 @@ async function syncRule() {
   return {
     configured: Boolean(account),
     enabled: active,
-    active
+    active,
+    autoQuality: settings.autoQuality
   };
 }
 
@@ -100,11 +102,12 @@ async function saveSettings(message) {
     ? normalizeAccount(message.sessdata)
     : current.account;
   const enabled = Boolean(message.enabled);
+  const autoQuality = Boolean(message.autoQuality);
   if (enabled && !account) {
     throw new Error("请先填写小号 SESSDATA，再启用小号初始化并取流。");
   }
 
-  await chrome.storage.local.set({ account, enabled });
+  await chrome.storage.local.set({ account, enabled, autoQuality });
   return syncRule();
 }
 

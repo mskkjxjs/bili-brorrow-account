@@ -1,6 +1,7 @@
 const form = document.querySelector("#settings-form");
 const sessdataInput = document.querySelector("#sessdata");
 const enabledInput = document.querySelector("#enabled");
+const autoQualityInput = document.querySelector("#auto-quality");
 const saveButton = document.querySelector("#save-button");
 const clearButton = document.querySelector("#clear-button");
 const stateDot = document.querySelector("#state-dot");
@@ -9,7 +10,8 @@ const messageText = document.querySelector("#message");
 
 function render(state) {
   enabledInput.checked = state.enabled;
-  sessdataInput.required = !state.configured;
+  autoQualityInput.checked = state.autoQuality;
+  sessdataInput.required = false;
   stateDot.classList.toggle("active", state.active);
 
   if (state.active) {
@@ -59,7 +61,8 @@ form.addEventListener("submit", async (event) => {
     const sessdata = sessdataInput.value.trim();
     const state = await send("SAVE_SETTINGS", {
       sessdata,
-      enabled: enabledInput.checked
+      enabled: enabledInput.checked,
+      autoQuality: autoQualityInput.checked
     });
     render(state);
     showMessage("设置已保存，请刷新视频页面。");
