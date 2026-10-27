@@ -33,34 +33,7 @@
           >
         </div>
 
-        <div class="cookie-field">
-          <label for="dede-user-id">DedeUserID（用户 ID）</label>
-          <input
-            id="dede-user-id"
-            name="dede-user-id"
-            type="text"
-            placeholder="只填写 DedeUserID 的值"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-            inputmode="numeric"
-          >
-        </div>
-
-        <div class="cookie-field">
-          <label for="bili-jct">bili_jct（CSRF 令牌）</label>
-          <input
-            id="bili-jct"
-            name="bili-jct"
-            type="text"
-            placeholder="只填写 bili_jct 的值"
-            autocomplete="off"
-            autocapitalize="off"
-            spellcheck="false"
-          >
-        </div>
-
-        <p class="hint">分别复制三项的值，不要包含名称、等号或分号。更换账号时需重新填写三项；仅切换开关可全部留空。</p>
+        <p class="hint">只复制 SESSDATA 的值，不要包含名称、等号或分号；仅切换开关时可留空。</p>
 
         <label class="toggle-row">
           <input id="enabled" type="checkbox">
@@ -71,11 +44,11 @@
       </form>
 
       <div class="secondary-actions">
-        <button id="clear-button" type="button">清除 Cookie</button>
+        <button id="clear-button" type="button">清除 SESSDATA</button>
       </div>
 
       <p id="message" class="message" aria-live="polite"></p>
-      <p class="privacy">借用账号的 Cookie 仅保存在扩展本地存储中，用于普通视频和番剧的播放器初始化及播放地址请求。视频主页面、观看历史、点赞、评论和消息均使用浏览器当前登录的大号，不会读取或修改浏览器保存的大号 Cookie。</p>
+      <p class="privacy">借用账号的 SESSDATA 仅保存在扩展本地存储中，用于普通视频和番剧的播放器初始化及播放地址请求。视频主页面、观看历史、点赞、评论和消息均使用浏览器当前登录的大号，不会读取或修改浏览器保存的大号 Cookie。</p>
     </main>
   </body>
 </html>

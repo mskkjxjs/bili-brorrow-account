@@ -4,35 +4,11 @@ const STORAGE_DEFAULTS = { account: null, enabled: false };
 
 function normalizeAccount(input) {
   const value = input.trim();
-  if (!value || value.length > 16384 || /[\r\n\0]/.test(value)) {
-    throw new Error("Cookie 格式无效，请粘贴单行 Cookie。");
+  if (!value || value.length > 4096 || !/^[\x21\x23-\x2B\x2D-\x3A\x3C\x3E-\x5B\x5D-\x7E]+$/.test(value)) {
+    throw new Error("请只填写有效的 SESSDATA 值，不要包含名称、等号或分号。");
   }
 
-  const pairs = [];
-  for (const item of value.split(";")) {
-    const separator = item.indexOf("=");
-    if (separator < 1) {
-      throw new Error("Cookie 格式无效，应使用 name=value; name2=value2 格式。");
-    }
-    const name = item.slice(0, separator).trim();
-    const itemValue = item.slice(separator + 1).trim();
-    if (!/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/.test(name) || !/^[\x21-\x7E]*$/.test(itemValue)) {
-      throw new Error("Cookie 含有不支持的字符。");
-    }
-    pairs.push([name, itemValue]);
-  }
-
-  const values = new Map(pairs);
-  const required = ["SESSDATA", "DedeUserID", "bili_jct"];
-  if (required.some((name) => !values.get(name))) {
-    throw new Error("Cookie 必须包含 SESSDATA、DedeUserID 和 bili_jct。");
-  }
-
-  return {
-    cookie: pairs.map(([name, itemValue]) => `${name}=${itemValue}`).join("; "),
-    mid: values.get("DedeUserID"),
-    csrf: values.get("bili_jct")
-  };
+  return { cookie: `SESSDATA=${value}` };
 }
 
 async function getStoredState() {
@@ -97,7 +73,7 @@ async function syncRule() {
       ? "借用B站账号：小号初始化和取流已启用，观看历史仍使用大号"
       : account
         ? "借用B站账号：已停用"
-        : "借用B站账号：请先填写小号 Cookie"
+        : "借用B站账号：请先填写小号 SESSDATA"
   });
 
   return {
@@ -120,12 +96,12 @@ async function getState() {
 
 async function saveSettings(message) {
   const current = await chrome.storage.local.get(STORAGE_DEFAULTS);
-  const account = message.cookie
-    ? normalizeAccount(message.cookie)
+  const account = message.sessdata
+    ? normalizeAccount(message.sessdata)
     : current.account;
   const enabled = Boolean(message.enabled);
   if (enabled && !account) {
-    throw new Error("请先填写小号 Cookie，再启用小号初始化并取流。");
+    throw new Error("请先填写小号 SESSDATA，再启用小号初始化并取流。");
   }
 
   await chrome.storage.local.set({ account, enabled });
