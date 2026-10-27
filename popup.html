@@ -33,7 +33,17 @@
           >
         </div>
 
-        <p class="hint">只复制 SESSDATA 的值，不要包含名称、等号或分号；仅切换开关时可留空。</p>
+        <div class="cookie-field">
+          <label for="bili-jct">bili_jct（可选，自动续期必填）</label>
+          <input id="bili-jct" name="bili-jct" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </div>
+
+        <div class="cookie-field">
+          <label for="refresh-token">ac_time_value（可选，自动续期必填）</label>
+          <input id="refresh-token" name="refresh-token" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
+        </div>
+
+        <p class="hint">各项只填写值，不要包含名称、等号或分号。后两项可留空，但开启自动续期必须填写。获取 ac_time_value：小号扫码登录时不要选择一次性登录，然后在浏览器控制台输入 window.localStorage.ac_time_value。</p>
 
         <label class="toggle-row">
           <input id="enabled" type="checkbox">
@@ -45,15 +55,22 @@
           <span>自动切换最高画质</span>
         </label>
 
+        <label class="toggle-row">
+          <input id="auto-refresh" type="checkbox">
+          <span>每日检查并自动续期 SESSDATA</span>
+        </label>
+
+        <p id="refresh-status" class="hint" role="status"></p>
+
         <button id="save-button" type="submit">保存设置</button>
       </form>
 
       <div class="secondary-actions">
-        <button id="clear-button" type="button">清除 SESSDATA</button>
+        <button id="clear-button" type="button">清除小号凭证</button>
       </div>
 
       <p id="message" class="message" aria-live="polite"></p>
-      <p class="privacy">借用账号的 SESSDATA 仅保存在扩展本地存储中，用于普通视频和番剧的播放器初始化及播放地址请求。视频主页面、观看历史、点赞、评论和消息均使用浏览器当前登录的大号，不会读取或修改浏览器保存的大号 Cookie。</p>
+      <p class="privacy">借用账号的 SESSDATA、bili_jct 和刷新令牌仅保存在扩展本地存储中。续期请求不接收浏览器 Cookie，不会覆盖大号登录状态。视频主页面、观看历史、点赞、评论和消息均使用浏览器当前登录的大号，不会读取或修改浏览器保存的大号 Cookie。</p>
     </main>
   </body>
 </html>

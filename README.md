@@ -10,8 +10,9 @@
 - **大号记录**：不接管视频主页面、观看历史或其他账号操作，无需提供大号 Cookie。
 - **自动最高画质**：选择画质菜单中的最高可用项，并尝试启用杜比或 Hi-Res 音质。
 - **页面切换检测**：B 站站内跳转至其他视频后重新检测画质。
-- **独立开关**：小号取流与自动最高画质可分别启用，自动画质默认开启。
-- **本地配置**：SESSDATA 和设置仅保存在扩展的 `chrome.storage.local` 中。
+- **自动续期**：每日检查 Cookie 状态，需要时轮换 SESSDATA、bili_jct 和刷新令牌。
+- **独立开关**：小号取流、自动最高画质与自动续期可分别启用。
+- **本地配置**：账号凭证和设置仅保存在扩展的 `chrome.storage.local` 中。
 
 ## 安装
 
@@ -35,7 +36,17 @@
 - 普通视频及番剧的播放地址请求。
 - 播放器 `v2` 初始化请求。
 
-请使用自己有权使用的账号。SESSDATA 等同于登录凭证，不要分享或提交到仓库；扩展不会自动续期，失效后需要手动更新。
+请使用自己有权使用的账号。SESSDATA 等同于登录凭证，不要分享或提交到仓库。
+
+### 自动续期 SESSDATA
+
+自动续期需要同时填写 **SESSDATA**、**bili_jct** 和 **ac_time_value**。其中 `ac_time_value` 是登录时生成的持久化刷新令牌，可从对应账号浏览器的 `localStorage` 中获取，不是 Cookie。
+
+这两项仅在开启自动续期时必填，不启用续期时可留空。获取 `ac_time_value` 时，需使用扫码登录且不能选择一次性登录，然后在对应账号的浏览器控制台输入 `window.localStorage.ac_time_value`。
+
+开启“每日检查并自动续期 SESSDATA”后，扩展会在浏览器启动、保存设置及每日定时任务中检查状态。仅在 B 站返回需要刷新时执行完整轮换，并保存响应中的新 SESSDATA、新 bili_jct 和新刷新令牌。
+
+续期请求使用 `credentials: "omit"`，不读取浏览器 Cookie，也不让刷新响应写入浏览器 Cookie，因此不会覆盖大号登录状态。扩展仅通过 `webRequest` 读取自己发起的刷新响应。
 
 ### 自动切换最高画质
 
@@ -45,13 +56,29 @@
 
 ## 隐私与权限
 
-- `storage`：保存 SESSDATA 和功能开关。
-- `declarativeNetRequestWithHostAccess`：仅对指定播放器接口修改 Cookie 请求头。
-- `www.bilibili.com` 与 `api.bilibili.com` 主机权限：识别视频页并处理播放器请求。
+- `storage`：保存账号凭证和功能开关。
+- `alarms`：每日检查是否需要续期。
+- `webRequest`：仅读取扩展自己发起的续期响应中的新 Cookie。
+- `declarativeNetRequestWithHostAccess`：仅对指定播放器及续期接口修改 Cookie 请求头。
+- `www.bilibili.com`、`api.bilibili.com` 与 `passport.bilibili.com` 主机权限：识别视频页、处理播放器请求及完成凭证续期。
 
 扩展不会读取或修改浏览器保存的大号 Cookie，也不包含远程配置、分析统计或广告代码。
 
+## 已知限制
+
+- 当前版本暂不支持观看大会员专享内容，包括番剧、电影等。
+- 自动续期依赖有效的 `ac_time_value`，无法恢复已经失效或未提供刷新令牌的登录状态。
+
 ## 更新说明
+
+### 0.1.3
+
+- 新增 SESSDATA 自动续期，按需轮换 SESSDATA、bili_jct 和刷新令牌。
+- 新增每日检查、浏览器启动检查和保存设置时立即检查。
+- bili_jct 和 ac_time_value 标记为可选，仅在启用自动续期时必填。
+- 插件内补充 ac_time_value 的控制台获取方法及扫码登录注意事项。
+- 续期请求与浏览器 Cookie 隔离，避免覆盖大号登录状态。
+- 已知问题：当前版本暂不支持观看大会员专享内容（番剧、电影等）。
 
 ### 0.1.2
 

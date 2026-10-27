@@ -1,16 +1,22 @@
 const form = document.querySelector("#settings-form");
 const sessdataInput = document.querySelector("#sessdata");
+const csrfInput = document.querySelector("#bili-jct");
+const refreshTokenInput = document.querySelector("#refresh-token");
 const enabledInput = document.querySelector("#enabled");
 const autoQualityInput = document.querySelector("#auto-quality");
+const autoRefreshInput = document.querySelector("#auto-refresh");
 const saveButton = document.querySelector("#save-button");
 const clearButton = document.querySelector("#clear-button");
 const stateDot = document.querySelector("#state-dot");
 const stateText = document.querySelector("#state-text");
+const refreshStatusText = document.querySelector("#refresh-status");
 const messageText = document.querySelector("#message");
 
 function render(state) {
   enabledInput.checked = state.enabled;
   autoQualityInput.checked = state.autoQuality;
+  autoRefreshInput.checked = state.autoRefresh;
+  refreshStatusText.textContent = state.refreshStatus || "";
   sessdataInput.required = false;
   stateDot.classList.toggle("active", state.active);
 
@@ -46,6 +52,8 @@ async function loadState() {
     if (settings.account) {
       sessdataInput.value = (settings.account.cookie.match(/(?:^|;\s*)SESSDATA=([^;]*)/)?.[1] || "")
         .replace(/^SESSDATA=/, "");
+      csrfInput.value = settings.account.csrf || "";
+      refreshTokenInput.value = settings.account.refreshToken || "";
     }
   } catch (error) {
     showMessage(error.message, true);
@@ -61,8 +69,11 @@ form.addEventListener("submit", async (event) => {
     const sessdata = sessdataInput.value.trim();
     const state = await send("SAVE_SETTINGS", {
       sessdata,
+      csrf: csrfInput.value.trim(),
+      refreshToken: refreshTokenInput.value.trim(),
       enabled: enabledInput.checked,
-      autoQuality: autoQualityInput.checked
+      autoQuality: autoQualityInput.checked,
+      autoRefresh: autoRefreshInput.checked
     });
     render(state);
     showMessage("设置已保存，请刷新视频页面。");
@@ -74,7 +85,7 @@ form.addEventListener("submit", async (event) => {
 });
 
 clearButton.addEventListener("click", async () => {
-  if (!window.confirm("确定清除已保存的小号 SESSDATA 并停用扩展吗？")) {
+  if (!window.confirm("确定清除已保存的小号凭证并停用取流和自动续期吗？")) {
     return;
   }
 
@@ -82,7 +93,9 @@ clearButton.addEventListener("click", async () => {
   try {
     render(await send("CLEAR_SETTINGS"));
     sessdataInput.value = "";
-    showMessage("已清除小号 SESSDATA，扩展已停用。");
+    csrfInput.value = "";
+    refreshTokenInput.value = "";
+    showMessage("已清除小号凭证，取流和自动续期已停用。");
   } catch (error) {
     showMessage(error.message, true);
   } finally {
