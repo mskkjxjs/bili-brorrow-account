@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>借用B站账号</title>
+    <link rel="stylesheet" href="popup.css">
+    <script src="popup.js" defer></script>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>借用B站账号</h1>
+          <p>大号浏览和记录，小号初始化并取流</p>
+        </div>
+        <span id="state-dot" class="state-dot" aria-hidden="true"></span>
+      </header>
+
+      <div id="state-text" class="state-text" role="status">正在读取设置…</div>
+
+      <form id="settings-form">
+        <div class="cookie-field">
+          <label for="sessdata">SESSDATA（登录凭证）</label>
+          <input
+            id="sessdata"
+            name="sessdata"
+            type="text"
+            placeholder="只填写 SESSDATA 的值"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+          >
+        </div>
+
+        <div class="cookie-field">
+          <label for="dede-user-id">DedeUserID（用户 ID）</label>
+          <input
+            id="dede-user-id"
+            name="dede-user-id"
+            type="text"
+            placeholder="只填写 DedeUserID 的值"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+            inputmode="numeric"
+          >
+        </div>
+
+        <div class="cookie-field">
+          <label for="bili-jct">bili_jct（CSRF 令牌）</label>
+          <input
+            id="bili-jct"
+            name="bili-jct"
+            type="text"
+            placeholder="只填写 bili_jct 的值"
+            autocomplete="off"
+            autocapitalize="off"
+            spellcheck="false"
+          >
+        </div>
+
+        <p class="hint">分别复制三项的值，不要包含名称、等号或分号。更换账号时需重新填写三项；仅切换开关可全部留空。</p>
+
+        <label class="toggle-row">
+          <input id="enabled" type="checkbox">
+          <span>启用小号初始化并取流</span>
+        </label>
+
+        <button id="save-button" type="submit">保存设置</button>
+      </form>
+
+      <div class="secondary-actions">
+        <button id="clear-button" type="button">清除 Cookie</button>
+      </div>
+
+      <p id="message" class="message" aria-live="polite"></p>
+      <p class="privacy">借用账号的 Cookie 仅保存在扩展本地存储中，用于普通视频和番剧的播放器初始化及播放地址请求。视频主页面、观看历史、点赞、评论和消息均使用浏览器当前登录的大号，不会读取或修改浏览器保存的大号 Cookie。</p>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,164 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", "Microsoft YaHei", sans-serif;
+  color: #17202a;
+  background: #f6f8fa;
+}
+
+body {
+  width: 340px;
+  margin: 0;
+}
+
+main {
+  padding: 20px;
+}
+
+header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+h1 {
+  margin: 0;
+  font-size: 21px;
+  letter-spacing: 0.02em;
+}
+
+header p {
+  margin: 5px 0 0;
+  color: #68727d;
+  font-size: 12px;
+}
+
+.state-dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 7px;
+  border-radius: 50%;
+  background: #a5adb5;
+}
+
+.state-dot.active {
+  background: #00a1d6;
+  box-shadow: 0 0 0 4px rgb(0 161 214 / 12%);
+}
+
+.state-text {
+  margin: 18px 0;
+  padding: 10px 12px;
+  border: 1px solid #e2e7eb;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 13px;
+}
+
+.cookie-field {
+  margin-bottom: 12px;
+}
+
+.cookie-field > label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cookie-field input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 11px;
+  border: 1px solid #cbd3da;
+  border-radius: 7px;
+  outline: none;
+  background: #fff;
+  font: 12px Consolas, monospace;
+}
+
+.cookie-field input:focus {
+  border-color: #00a1d6;
+  box-shadow: 0 0 0 3px rgb(0 161 214 / 12%);
+}
+
+.hint,
+.privacy {
+  color: #68727d;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.hint {
+  margin: 6px 0 14px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 15px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.toggle-row input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: #00a1d6;
+}
+
+button {
+  border: 0;
+  border-radius: 7px;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+#save-button {
+  width: 100%;
+  padding: 10px;
+  background: #00a1d6;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#save-button:hover:not(:disabled) {
+  background: #008fbe;
+}
+
+.secondary-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 13px;
+  font-size: 12px;
+}
+
+#clear-button {
+  padding: 0;
+  background: transparent;
+  color: #b34747;
+  font-size: 12px;
+}
+
+.message {
+  min-height: 18px;
+  margin: 12px 0 0;
+  color: #007fa9;
+  font-size: 12px;
+}
+
+.message.error {
+  color: #b34747;
+}
+
+.privacy {
+  margin: 8px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid #e2e7eb;
+}
