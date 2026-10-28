@@ -26,6 +26,7 @@ jobs:
             auto-quality.js \
             background.js \
             bangumi-playinfo.js \
+            bangumi-settings.js \
             popup.css \
             popup.html \
             popup.js \

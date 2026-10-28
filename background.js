@@ -1,4 +1,4 @@
-const RULE_IDS = [1, 2];
+const RULE_IDS = [1, 2, 3];
 const ALL_RULE_IDS = [1, 2, 3, 4, 5];
 const STORAGE_DEFAULTS = {
   account: null,
@@ -69,6 +69,10 @@ function buildRules(account, playbackActive, refreshActive) {
       buildRule(2, account.cookie, {
         regexFilter: "^https://api\\.bilibili\\.com/x/player/(?:wbi/)?v2(?:\\?|$)",
         initiatorDomains: ["www.bilibili.com"]
+      }),
+      buildRule(3, account.cookie, {
+        regexFilter: "^https://www\\.bilibili\\.com/bangumi/play/ep\\d+(?:[?#]|$)",
+        resourceTypes: ["main_frame"]
       })
     );
   }
