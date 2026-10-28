@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "借用B站账号",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "大号浏览和记录，小号初始化并取流。",
   "icons": {
     "16": "icons/icon-16.png",

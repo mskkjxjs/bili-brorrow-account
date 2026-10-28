@@ -1,6 +1,7 @@
 (() => {
   let playbackEnabled = false;
   let overlayStyle = null;
+  let progressRestoreStarted = false;
   const globalRefreshes = [];
 
   function unlockPlaybackData(value, seen = new WeakSet()) {
@@ -141,12 +142,87 @@
     }
   }
 
+  async function loadHistoryProgress() {
+    const episodeId = Number(location.pathname.match(/\/ep(\d+)/)?.[1]);
+    if (!episodeId) {
+      return null;
+    }
+
+    const response = await fetch(
+      "https://api.bilibili.com/x/web-interface/history/cursor?ps=30",
+      { credentials: "include" }
+    );
+    const data = await response.json();
+    const entry = data.data?.list?.find((item) =>
+      item.history?.business === "pgc" && Number(item.history.epid) === episodeId
+    );
+    return entry?.progress > 0 ? entry.progress : null;
+  }
+
+  function waitForVideo() {
+    return new Promise((resolve) => {
+      let attempts = 0;
+      function findVideo() {
+        const video = document.querySelector(".bpx-player-video-wrap video, video");
+        if (video || ++attempts >= 60) {
+          clearInterval(timer);
+          resolve(video);
+        }
+      }
+
+      const timer = setInterval(findVideo, 500);
+      findVideo();
+    });
+  }
+
+  function restoreVideoProgress(video, progress) {
+    function seek() {
+      if (Math.abs(video.currentTime - progress) < 2) {
+        return;
+      }
+      if (Number.isFinite(video.duration) && progress >= video.duration - 5) {
+        return;
+      }
+      try {
+        video.currentTime = progress;
+      } catch {}
+    }
+
+    if (video.readyState >= 1) {
+      seek();
+    } else {
+      video.addEventListener("loadedmetadata", seek, { once: true });
+    }
+    video.addEventListener("canplay", seek, { once: true });
+  }
+
+  async function restorePlaybackProgress() {
+    if (progressRestoreStarted) {
+      return;
+    }
+    progressRestoreStarted = true;
+
+    try {
+      const progress = await loadHistoryProgress();
+      if (!progress) {
+        return;
+      }
+      const video = await waitForVideo();
+      if (video) {
+        restoreVideoProgress(video, progress);
+      }
+    } catch {}
+  }
+
   function updatePlaybackState(enabled) {
     playbackEnabled = enabled;
     for (const refresh of globalRefreshes) {
       refresh();
     }
     syncOverlay();
+    if (playbackEnabled) {
+      restorePlaybackProgress();
+    }
   }
 
   window.addEventListener("bili-borrow-playback-state", (event) => {
