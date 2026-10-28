@@ -8,7 +8,9 @@ const STORAGE_DEFAULTS = {
   refreshStatus: ""
 };
 const REFRESH_URL = "https://passport.bilibili.com/x/passport-login/web/cookie/refresh";
+const QR_POLL_URL_PREFIX = "https://passport.bilibili.com/x/passport-login/web/qrcode/poll";
 let refreshedCookies = null;
+let qrCookies = null;
 let refreshPromise = null;
 
 function normalizeAccount(input) {
@@ -22,7 +24,7 @@ function normalizeAccount(input) {
 
 function normalizeRefreshValue(input, label) {
   const value = input.trim();
-  if (!/^[0-9a-z]+$/i.test(value)) {
+  if (!value || value.length > 512 || !/^[0-9A-Za-z_.~+/=-]+$/.test(value)) {
     throw new Error(`请填写有效的 ${label}。`);
   }
   return value;
@@ -325,9 +327,16 @@ chrome.webRequest.onHeadersReceived.addListener(
         cookies[match[1]] = match[2];
       }
     }
-    refreshedCookies = cookies;
+    if (!cookies.SESSDATA && !cookies.bili_jct) {
+      return;
+    }
+    if (details.url.startsWith(QR_POLL_URL_PREFIX)) {
+      qrCookies = cookies;
+    } else if (details.url.startsWith(REFRESH_URL)) {
+      refreshedCookies = cookies;
+    }
   },
-  { urls: [REFRESH_URL], types: ["xmlhttprequest"] },
+  { urls: ["https://passport.bilibili.com/*"], types: ["xmlhttprequest"] },
   ["responseHeaders", "extraHeaders"]
 );
 
@@ -345,6 +354,14 @@ async function handleMessage(message) {
       return saveSettings(message);
     case "CLEAR_SETTINGS":
       return clearSettings();
+    case "TAKE_QR_COOKIES": {
+      const cookies = qrCookies || {};
+      qrCookies = null;
+      return { cookies };
+    }
+    case "RESET_QR_COOKIES":
+      qrCookies = null;
+      return { cookies: {} };
     default:
       throw new Error("未知操作。");
   }

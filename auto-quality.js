@@ -1,4 +1,5 @@
-let autoQualityEnabled = true;
+let borrowActive = false;
+let retryTimer = null;
 
 function selectHighestQuality() {
   const qualityItems = document.querySelectorAll(
@@ -31,61 +32,70 @@ function selectHighestAudio() {
   return false;
 }
 
-function selectBestPlayback() {
-  if (!autoQualityEnabled) {
+function applyBestPlayback() {
+  try {
+    const qualitySelected = selectHighestQuality();
+    const audioSelected = selectHighestAudio();
+    return qualitySelected || audioSelected;
+  } catch {
     return false;
   }
-  const qualitySelected = selectHighestQuality();
-  const audioSelected = selectHighestAudio();
-  return qualitySelected || audioSelected;
 }
 
-function retrySelect(maxAttempts = 15) {
+function retrySelect(delay = 500, maxAttempts = 20) {
+  clearTimeout(retryTimer);
   let attempts = 0;
 
   function attempt() {
-    if (!autoQualityEnabled || attempts >= maxAttempts) {
+    if (!borrowActive || attempts >= maxAttempts) {
       return;
     }
 
-    try {
-      if (selectBestPlayback()) {
-        return;
-      }
-    } catch {}
+    if (applyBestPlayback()) {
+      return;
+    }
 
-    const delay = Math.min(Math.pow(1.5, attempts) * 200, 5000);
+    const wait = Math.min(Math.pow(1.5, attempts) * 200, 5000);
     attempts++;
-    setTimeout(attempt, delay);
+    retryTimer = setTimeout(attempt, wait);
   }
 
-  attempt();
+  retryTimer = setTimeout(attempt, delay);
 }
+
+function syncBorrowState(settings) {
+  const nextActive = Boolean(settings.account && settings.enabled && settings.autoQuality);
+  const becameActive = nextActive && !borrowActive;
+  borrowActive = nextActive;
+  if (becameActive) {
+    retrySelect(800);
+  } else if (!borrowActive) {
+    clearTimeout(retryTimer);
+  }
+}
+
+chrome.storage.local.get({ account: null, enabled: false, autoQuality: true }).then(syncBorrowState);
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && (changes.account || changes.enabled || changes.autoQuality)) {
+    chrome.storage.local.get({ account: null, enabled: false, autoQuality: true }).then(syncBorrowState);
+  }
+});
 
 let lastUrl = location.href;
 function checkUrlChange() {
   if (location.href !== lastUrl) {
     lastUrl = location.href;
-    setTimeout(() => retrySelect(), 1000);
+    if (borrowActive) {
+      retrySelect(1200);
+    }
   }
 }
 
-chrome.storage.local.get({ autoQuality: true }).then((settings) => {
-  autoQualityEnabled = settings.autoQuality;
-  if (autoQualityEnabled) {
-    setTimeout(() => retrySelect(), 500);
-  }
-});
-
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === "local" && changes.autoQuality) {
-    autoQualityEnabled = changes.autoQuality.newValue;
-    if (autoQualityEnabled) {
-      retrySelect();
-    }
-  }
-});
-
 window.addEventListener("popstate", checkUrlChange);
-window.addEventListener("hashchange", () => setTimeout(() => retrySelect(), 1000));
+window.addEventListener("hashchange", () => {
+  if (borrowActive) {
+    retrySelect(1200);
+  }
+});
 setInterval(checkUrlChange, 1000);

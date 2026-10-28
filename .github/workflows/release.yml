@@ -25,11 +25,12 @@ jobs:
             manifest.json \
             auto-quality.js \
             background.js \
-            bangumi-playinfo.js \
-            bangumi-settings.js \
+            playback-data.js \
+            playback-settings.js \
             popup.css \
             popup.html \
             popup.js \
+            vendor \
             icons
 
       - name: Create GitHub release

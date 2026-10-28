@@ -1,34 +1,61 @@
 (() => {
   let playbackEnabled = false;
+  let qualityBoost = false;
+  let stateKnown = false;
   let overlayStyle = null;
   let progressRestoreStarted = false;
   const globalRefreshes = [];
 
-  function unlockPlaybackData(value, seen = new WeakSet()) {
+  function isBangumiPage() {
+    return location.pathname.startsWith("/bangumi/play/");
+  }
+
+  function isPlayData(value) {
+    return (
+      value &&
+      typeof value === "object" &&
+      Array.isArray(value.dash?.video) &&
+      Number.isFinite(value.quality)
+    );
+  }
+
+  function optimizePlaybackData(value, seen = new WeakSet()) {
     if (!value || typeof value !== "object" || seen.has(value)) {
       return value;
     }
 
     seen.add(value);
+    if (isPlayData(value)) {
+      const accepted = Array.isArray(value.accept_quality)
+        ? value.accept_quality.filter((id) => Number.isFinite(id))
+        : [];
+      const ids = value.dash.video
+        .map((stream) => stream?.id)
+        .filter((id) => Number.isFinite(id) && (accepted.length === 0 || accepted.includes(id)));
+      if (ids.length > 0) {
+        value.quality = Math.max(...ids);
+      }
+    }
+
     for (const [key, child] of Object.entries(value)) {
       if ((key === "need_login" || key === "need_vip") && child === true) {
         value[key] = false;
       } else {
-        unlockPlaybackData(child, seen);
+        optimizePlaybackData(child, seen);
       }
     }
     return value;
   }
 
-  function unlockNextData(data) {
+  function optimizeNextData(data) {
     const queries = data?.props?.pageProps?.dehydratedState?.queries;
     for (const query of queries || []) {
-      unlockPlaybackData(query?.state?.data);
+      optimizePlaybackData(query?.state?.data);
     }
     return data;
   }
 
-  function interceptGlobal(name, transform = unlockPlaybackData) {
+  function interceptGlobal(name, transform = optimizePlaybackData) {
     let value = window[name];
     Object.defineProperty(window, name, {
       configurable: true,
@@ -37,20 +64,36 @@
         return value;
       },
       set(nextValue) {
-        value = playbackEnabled ? transform(nextValue) : nextValue;
+        value = qualityBoost ? transform(nextValue) : nextValue;
       }
     });
     globalRefreshes.push(() => {
-      if (playbackEnabled) {
+      if (qualityBoost) {
         value = transform(value);
       }
     });
   }
 
-  interceptGlobal("__playinfo__");
+  // 普通视频页的 SSR 播放数据来自大号（最高 1080P）。开启最高画质时隐藏它，
+  // 让播放器改用接口取流，才能首帧即按小号权限播放。
+  let playinfoValue;
+  Object.defineProperty(window, "__playinfo__", {
+    configurable: true,
+    enumerable: true,
+    get() {
+      if (!isBangumiPage() && (!stateKnown || qualityBoost)) {
+        return undefined;
+      }
+      return qualityBoost ? optimizePlaybackData(playinfoValue) : playinfoValue;
+    },
+    set(nextValue) {
+      playinfoValue = nextValue;
+    }
+  });
+
   interceptGlobal("playurlSSRData");
   interceptGlobal("__PLAYURL_HYDRATE_DATA__");
-  interceptGlobal("__NEXT_DATA__", unlockNextData);
+  interceptGlobal("__NEXT_DATA__", optimizeNextData);
 
   function isPlayurlRequest(input) {
     try {
@@ -62,13 +105,13 @@
     }
   }
 
-  function unlockResponseValue(value) {
-    if (!playbackEnabled || typeof value !== "string") {
-      return playbackEnabled ? unlockPlaybackData(value) : value;
+  function optimizeResponseValue(value) {
+    if (!qualityBoost || typeof value !== "string") {
+      return qualityBoost ? optimizePlaybackData(value) : value;
     }
 
     try {
-      return JSON.stringify(unlockPlaybackData(JSON.parse(value)));
+      return JSON.stringify(optimizePlaybackData(JSON.parse(value)));
     } catch {
       return value;
     }
@@ -95,7 +138,7 @@
         Object.defineProperty(this, name, {
           configurable: true,
           get() {
-            return unlockResponseValue(descriptor.get.call(this));
+            return optimizeResponseValue(descriptor.get.call(this));
           }
         });
       }
@@ -117,13 +160,13 @@
       Object.defineProperties(response, {
         text: {
           configurable: true,
-          value: async () => unlockResponseValue(await originalText())
+          value: async () => optimizeResponseValue(await originalText())
         },
         json: {
           configurable: true,
           value: async () => {
             const value = await originalJson();
-            return playbackEnabled ? unlockPlaybackData(value) : value;
+            return qualityBoost ? optimizePlaybackData(value) : value;
           }
         }
       });
@@ -132,11 +175,12 @@
   };
 
   function syncOverlay() {
-    if (playbackEnabled && !overlayStyle) {
+    const shouldHide = playbackEnabled && isBangumiPage();
+    if (shouldHide && !overlayStyle) {
       overlayStyle = document.createElement("style");
       overlayStyle.textContent = 'div[class^="playerPop"] { display: none !important; }';
       (document.head || document.documentElement).appendChild(overlayStyle);
-    } else if (!playbackEnabled && overlayStyle) {
+    } else if (!shouldHide && overlayStyle) {
       overlayStyle.remove();
       overlayStyle = null;
     }
@@ -216,17 +260,27 @@
 
   function updatePlaybackState(enabled) {
     playbackEnabled = enabled;
+    stateKnown = true;
+    syncOverlay();
+    if (playbackEnabled && isBangumiPage()) {
+      restorePlaybackProgress();
+    }
+  }
+
+  function updateQualityState(enabled) {
+    qualityBoost = enabled;
+    stateKnown = true;
     for (const refresh of globalRefreshes) {
       refresh();
-    }
-    syncOverlay();
-    if (playbackEnabled) {
-      restorePlaybackProgress();
     }
   }
 
   window.addEventListener("bili-borrow-playback-state", (event) => {
     updatePlaybackState(event.detail === true);
+  });
+
+  window.addEventListener("bili-borrow-quality-state", (event) => {
+    updateQualityState(event.detail === true);
   });
 
   function episodeIdFromUrl(url) {
@@ -235,7 +289,7 @@
 
   let episodeId = episodeIdFromUrl(location);
   setInterval(() => {
-    if (!playbackEnabled) {
+    if (!playbackEnabled || !isBangumiPage()) {
       return;
     }
 

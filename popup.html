@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>借用B站账号</title>
     <link rel="stylesheet" href="popup.css">
+    <script src="vendor/qrcode.js" defer></script>
     <script src="popup.js" defer></script>
   </head>
   <body>
@@ -18,6 +19,14 @@
       </header>
 
       <div id="state-text" class="state-text" role="status">正在读取设置…</div>
+
+      <div class="qr-login">
+        <button id="qr-button" type="button" class="qr-button">扫码登录小号（自动填入 Cookie）</button>
+        <div id="qr-panel" class="qr-panel" hidden>
+          <div id="qr-code" class="qr-code" aria-label="小号登录二维码"></div>
+          <p id="qr-status" class="hint qr-status" role="status"></p>
+        </div>
+      </div>
 
       <form id="settings-form">
         <div class="cookie-field">
@@ -43,7 +52,7 @@
           <input id="refresh-token" name="refresh-token" type="text" autocomplete="off" autocapitalize="off" spellcheck="false">
         </div>
 
-        <p class="hint">各项只填写值，不要包含名称、等号或分号。后两项可留空，但开启自动续期必须填写。获取 ac_time_value：小号扫码登录时不要选择一次性登录，然后在浏览器控制台输入 window.localStorage.ac_time_value。</p>
+        <p class="hint">扫码成功后三项会自动填入，也可以手动粘贴。手动填写时只填写值，不要包含名称、等号或分号。后两项可留空，但开启自动续期必须填写。</p>
 
         <label class="toggle-row">
           <input id="enabled" type="checkbox">
@@ -54,6 +63,7 @@
           <input id="auto-quality" type="checkbox">
           <span>自动切换最高画质</span>
         </label>
+        <p class="hint">勾选后会直出小号可用的最高画质（含会员档位）；不勾选则使用 B 站默认画质，小号无大会员时不会选中会员画质。</p>
 
         <label class="toggle-row">
           <input id="auto-refresh" type="checkbox">
@@ -70,7 +80,7 @@
       </div>
 
       <p id="message" class="message" aria-live="polite"></p>
-      <p class="privacy">借用账号的 SESSDATA、bili_jct 和刷新令牌仅保存在扩展本地存储中。续期请求不接收浏览器 Cookie，不会覆盖大号登录状态。视频主页面、观看历史、点赞、评论和消息均使用浏览器当前登录的大号，不会读取或修改浏览器保存的大号 Cookie。</p>
+      <p class="privacy">借用账号的 SESSDATA、bili_jct 和刷新令牌仅保存在扩展本地存储中。扫码登录只读取登录凭证，不会把浏览器切换成小号。续期请求不接收浏览器 Cookie，不会覆盖大号登录状态。视频主页面、观看历史、点赞、评论和消息均使用浏览器当前登录的大号，不会读取或修改浏览器保存的大号 Cookie。</p>
     </main>
   </body>
 </html>
