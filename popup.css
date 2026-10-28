@@ -205,6 +205,56 @@ button:disabled {
   color: #b34747;
 }
 
+.update-panel {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e7eb;
+}
+
+.update-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #68727d;
+  font-size: 12px;
+}
+
+.update-head strong {
+  color: #17202a;
+}
+
+#check-update-button {
+  padding: 5px 10px;
+  border: 1px solid #cbd3da;
+  background: #fff;
+  color: #17202a;
+  font-size: 12px;
+}
+
+#check-update-button:hover:not(:disabled) {
+  background: #f2f5f7;
+}
+
+.update-status {
+  min-height: 16px;
+  margin: 8px 0 0;
+}
+
+.update-status.error {
+  color: #b34747;
+}
+
+.update-link {
+  display: inline-block;
+  margin-top: 4px;
+  color: #008fbe;
+  font-size: 12px;
+}
+
+.update-toggle {
+  margin: 12px 0 0;
+}
+
 .privacy {
   margin: 8px 0 0;
   padding-top: 12px;

@@ -5,10 +5,16 @@ const STORAGE_DEFAULTS = {
   enabled: false,
   autoQuality: true,
   autoRefresh: false,
+  autoCheckUpdate: true,
+  updateStatus: null,
   refreshStatus: ""
 };
 const REFRESH_URL = "https://passport.bilibili.com/x/passport-login/web/cookie/refresh";
 const QR_POLL_URL_PREFIX = "https://passport.bilibili.com/x/passport-login/web/qrcode/poll";
+const UPDATE_API_URL = "https://api.github.com/repos/mskkjxjs/bili-brorrow-account/releases/latest";
+const RELEASE_PAGE = "https://github.com/mskkjxjs/bili-brorrow-account/releases/latest";
+const UPDATE_ALARM = "check-update";
+const UPDATE_PERIOD_MINUTES = 1440;
 let refreshedCookies = null;
 let qrCookies = null;
 let refreshPromise = null;
@@ -38,6 +44,8 @@ async function getStoredState() {
     enabled: configured && settings.enabled,
     autoQuality: settings.autoQuality,
     autoRefresh: settings.autoRefresh,
+    autoCheckUpdate: settings.autoCheckUpdate,
+    updateStatus: settings.updateStatus,
     refreshStatus: settings.refreshStatus
   };
 }
@@ -104,15 +112,7 @@ async function syncRule() {
     throw new Error("浏览器无法应用请求规则，请使用 Chrome 或 Edge 128 及更高版本。");
   }
 
-  await chrome.action.setBadgeBackgroundColor({ color: "#00a1d6" });
-  await chrome.action.setBadgeText({ text: active ? "小" : "" });
-  await chrome.action.setTitle({
-    title: active
-      ? "借用B站账号：小号初始化和取流已启用，观看历史仍使用大号"
-      : account
-        ? "借用B站账号：已停用"
-        : "借用B站账号：请先填写小号 SESSDATA"
-  });
+  await syncBadge();
 
   if (refreshActive) {
     chrome.alarms.create("refresh-sessdata", { periodInMinutes: 1440 });
@@ -126,6 +126,11 @@ async function syncRule() {
     active,
     autoQuality: settings.autoQuality,
     autoRefresh: settings.autoRefresh,
+    autoCheckUpdate: settings.autoCheckUpdate,
+    updateStatus: settings.updateStatus,
+    update: settings.updateStatus
+      ? { ...settings.updateStatus, updateAvailable: hasUpdate(settings.updateStatus) }
+      : null,
     refreshStatus: settings.refreshStatus
   };
 }
@@ -137,8 +142,98 @@ async function getState() {
   ]);
   return {
     ...state,
+    update: state.updateStatus
+      ? { ...state.updateStatus, updateAvailable: hasUpdate(state.updateStatus) }
+      : null,
     active: state.enabled && RULE_IDS.every((id) => rules.some((rule) => rule.id === id))
   };
+}
+
+function parseVersion(value) {
+  return String(value || "").replace(/^v/i, "").split(".")
+    .map((part) => Number.parseInt(part, 10) || 0);
+}
+
+function hasUpdate(status) {
+  if (!status?.latestVersion) {
+    return false;
+  }
+  const latest = parseVersion(status.latestVersion);
+  const current = parseVersion(chrome.runtime.getManifest().version);
+  for (let i = 0; i < Math.max(latest.length, current.length); i++) {
+    if ((latest[i] || 0) !== (current[i] || 0)) {
+      return (latest[i] || 0) > (current[i] || 0);
+    }
+  }
+  return false;
+}
+
+async function syncBadge() {
+  const settings = await chrome.storage.local.get(STORAGE_DEFAULTS);
+  const active = Boolean(settings.account && settings.enabled);
+  const update = hasUpdate(settings.updateStatus);
+
+  await chrome.action.setBadgeBackgroundColor({ color: update ? "#ff7a00" : "#00a1d6" });
+  await chrome.action.setBadgeText({ text: update ? "新" : active ? "小" : "" });
+  await chrome.action.setTitle({
+    title: update
+      ? `借用B站账号：发现新版本 ${settings.updateStatus.latestVersion}`
+      : active
+        ? "借用B站账号：小号初始化和取流已启用，观看历史仍使用大号"
+        : settings.account
+          ? "借用B站账号：已停用"
+          : "借用B站账号：请先填写小号 SESSDATA"
+  });
+}
+
+async function checkForUpdate() {
+  const currentVersion = chrome.runtime.getManifest().version;
+  let status;
+  try {
+    const response = await fetch(UPDATE_API_URL, {
+      credentials: "omit",
+      cache: "no-store",
+      headers: { Accept: "application/vnd.github+json" }
+    });
+    if (!response.ok) {
+      throw new Error(`更新接口返回 HTTP ${response.status}`);
+    }
+    const release = await response.json();
+    const latestVersion = String(release.tag_name || "").replace(/^v/i, "");
+    if (!latestVersion) {
+      throw new Error("更新接口未返回版本号。");
+    }
+    status = {
+      checkedAt: Date.now(),
+      currentVersion,
+      latestVersion,
+      url: release.html_url || RELEASE_PAGE,
+      error: ""
+    };
+  } catch (error) {
+    status = {
+      checkedAt: Date.now(),
+      currentVersion,
+      latestVersion: "",
+      url: RELEASE_PAGE,
+      error: error.message
+    };
+  }
+
+  await chrome.storage.local.set({ updateStatus: status });
+  await syncBadge();
+  return getState();
+}
+
+async function setAutoCheckUpdate(enabled) {
+  await chrome.storage.local.set({ autoCheckUpdate: enabled });
+  if (enabled) {
+    chrome.alarms.create(UPDATE_ALARM, { periodInMinutes: UPDATE_PERIOD_MINUTES });
+    return checkForUpdate();
+  }
+
+  await chrome.alarms.clear(UPDATE_ALARM);
+  return getState();
 }
 
 async function saveSettings(message) {
@@ -343,6 +438,12 @@ chrome.webRequest.onHeadersReceived.addListener(
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "refresh-sessdata") {
     checkAndRefresh().catch(() => {});
+  } else if (alarm.name === UPDATE_ALARM) {
+    chrome.storage.local.get({ autoCheckUpdate: true }).then((settings) => {
+      if (settings.autoCheckUpdate) {
+        checkForUpdate().catch(() => {});
+      }
+    });
   }
 });
 
@@ -354,6 +455,10 @@ async function handleMessage(message) {
       return saveSettings(message);
     case "CLEAR_SETTINGS":
       return clearSettings();
+    case "CHECK_UPDATE":
+      return checkForUpdate();
+    case "SET_AUTO_CHECK_UPDATE":
+      return setAutoCheckUpdate(Boolean(message.enabled));
     case "TAKE_QR_COOKIES": {
       const cookies = qrCookies || {};
       qrCookies = null;
@@ -384,6 +489,13 @@ function refreshRule() {
 async function initialize() {
   await refreshRule();
   await checkAndRefresh().catch(() => {});
+  const { autoCheckUpdate } = await chrome.storage.local.get({ autoCheckUpdate: true });
+  if (autoCheckUpdate) {
+    chrome.alarms.create(UPDATE_ALARM, { periodInMinutes: UPDATE_PERIOD_MINUTES });
+    await checkForUpdate().catch(() => {});
+  } else {
+    await syncBadge();
+  }
 }
 
 chrome.runtime.onInstalled.addListener(initialize);

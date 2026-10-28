@@ -15,10 +15,16 @@ const qrButton = document.querySelector("#qr-button");
 const qrPanel = document.querySelector("#qr-panel");
 const qrCodeElement = document.querySelector("#qr-code");
 const qrStatusText = document.querySelector("#qr-status");
+const currentVersionText = document.querySelector("#current-version");
+const checkUpdateButton = document.querySelector("#check-update-button");
+const updateStatusText = document.querySelector("#update-status");
+const updateLink = document.querySelector("#update-link");
+const autoCheckUpdateInput = document.querySelector("#auto-check-update");
 
 const QR_GENERATE_URL = "https://passport.bilibili.com/x/passport-login/web/qrcode/generate";
 const QR_POLL_URL = "https://passport.bilibili.com/x/passport-login/web/qrcode/poll";
 const QR_POLL_INTERVAL_MS = 2000;
+const RELEASE_PAGE = "https://github.com/mskkjxjs/bili-brorrow-account/releases/latest";
 const qrMode = new URLSearchParams(location.search).get("qr") === "1";
 
 let qrJobId = 0;
@@ -28,9 +34,11 @@ function render(state) {
   enabledInput.checked = state.enabled;
   autoQualityInput.checked = state.autoQuality;
   autoRefreshInput.checked = state.autoRefresh;
+  autoCheckUpdateInput.checked = state.autoCheckUpdate;
   refreshStatusText.textContent = state.refreshStatus || "";
   sessdataInput.required = false;
   stateDot.classList.toggle("active", state.active);
+  renderUpdate(state.update || null);
 
   if (state.active) {
     stateText.textContent = "已启用：大号浏览和记录，小号初始化并取流";
@@ -39,6 +47,33 @@ function render(state) {
   } else {
     stateText.textContent = "尚未配置小号，请扫码登录或填写 SESSDATA";
   }
+}
+
+function renderUpdate(update) {
+  updateStatusText.classList.remove("error");
+  updateLink.href = RELEASE_PAGE;
+  updateLink.textContent = "查看 GitHub 发布页";
+  if (!update) {
+    updateStatusText.textContent = "尚未检查更新";
+    return;
+  }
+
+  const time = update.checkedAt ? new Date(update.checkedAt).toLocaleString("zh-CN") : "";
+  if (update.error) {
+    updateStatusText.textContent = `检查失败：${update.error}${time ? `（${time}）` : ""}`;
+    updateStatusText.classList.add("error");
+    return;
+  }
+
+  if (update.updateAvailable) {
+    updateStatusText.textContent = `发现新版本 ${update.latestVersion}（当前 ${update.currentVersion}）`;
+    updateLink.href = update.url || RELEASE_PAGE;
+    updateLink.textContent = "前往 GitHub 下载新版本";
+    return;
+  }
+
+  updateStatusText.textContent =
+    `已是最新版本（${update.currentVersion}）${time ? ` · ${time}` : ""}`;
 }
 
 function showMessage(text, isError = false) {
@@ -264,6 +299,42 @@ clearButton.addEventListener("click", async () => {
 });
 
 window.addEventListener("unload", stopQrPoll);
+
+currentVersionText.textContent = `v${chrome.runtime.getManifest().version}`;
+
+checkUpdateButton.addEventListener("click", async () => {
+  checkUpdateButton.disabled = true;
+  updateStatusText.classList.remove("error");
+  updateStatusText.textContent = "正在检查更新…";
+  try {
+    renderUpdate((await send("CHECK_UPDATE")).update || null);
+  } catch (error) {
+    updateStatusText.textContent = `检查失败：${error.message}`;
+    updateStatusText.classList.add("error");
+  } finally {
+    checkUpdateButton.disabled = false;
+  }
+});
+
+autoCheckUpdateInput.addEventListener("change", async () => {
+  autoCheckUpdateInput.disabled = true;
+  try {
+    render(await send("SET_AUTO_CHECK_UPDATE", { enabled: autoCheckUpdateInput.checked }));
+  } catch (error) {
+    autoCheckUpdateInput.checked = !autoCheckUpdateInput.checked;
+    showMessage(error.message, true);
+  } finally {
+    autoCheckUpdateInput.disabled = false;
+  }
+});
+
+updateLink.addEventListener("click", (event) => {
+  event.preventDefault();
+  const url = updateLink.href;
+  if (url) {
+    chrome.tabs.create({ url });
+  }
+});
 
 if (qrMode) {
   qrButton.textContent = "重新获取二维码";

@@ -79,8 +79,21 @@
         <button id="clear-button" type="button">清除小号凭证</button>
       </div>
 
+      <section class="update-panel">
+        <div class="update-head">
+          <span>当前版本 <strong id="current-version"></strong></span>
+          <button id="check-update-button" type="button">检查更新</button>
+        </div>
+        <p id="update-status" class="hint update-status" role="status">尚未检查更新</p>
+        <a id="update-link" class="update-link" target="_blank" rel="noreferrer">查看 GitHub 发布页</a>
+        <label class="toggle-row update-toggle">
+          <input id="auto-check-update" type="checkbox">
+          <span>自动检查更新（每天一次）</span>
+        </label>
+      </section>
+
       <p id="message" class="message" aria-live="polite"></p>
-      <p class="privacy">借用账号的 SESSDATA、bili_jct 和刷新令牌仅保存在扩展本地存储中。扫码登录只读取登录凭证，不会把浏览器切换成小号。续期请求不接收浏览器 Cookie，不会覆盖大号登录状态。视频主页面、观看历史、点赞、评论和消息均使用浏览器当前登录的大号，不会读取或修改浏览器保存的大号 Cookie。</p>
+      <p class="privacy">借用账号的 SESSDATA、bili_jct 和刷新令牌仅保存在扩展本地存储中。扫码登录只读取登录凭证，不会把浏览器切换成小号。续期请求不接收浏览器 Cookie，不会覆盖大号登录状态。检查更新只请求 GitHub Releases 接口，不发送账号凭证。视频主页面、观看历史、点赞、评论和消息均使用浏览器当前登录的大号，不会读取或修改浏览器保存的大号 Cookie。</p>
     </main>
   </body>
 </html>

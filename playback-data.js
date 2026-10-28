@@ -77,6 +77,20 @@
   // 普通视频页的 SSR 播放数据来自大号（最高 1080P）。开启最高画质时隐藏它，
   // 让播放器改用接口取流，才能首帧即按小号权限播放。
   let playinfoValue;
+  let resumeInfo = null;
+
+  function captureResume(value) {
+    if (isBangumiPage()) {
+      return;
+    }
+    const data = value?.data || value?.result || value;
+    const time = data?.last_play_time;
+    const cid = data?.last_play_cid;
+    if (Number.isFinite(time) && time > 0 && Number.isFinite(cid) && cid > 0) {
+      resumeInfo = { time, cid };
+    }
+  }
+
   Object.defineProperty(window, "__playinfo__", {
     configurable: true,
     enumerable: true,
@@ -88,6 +102,7 @@
     },
     set(nextValue) {
       playinfoValue = nextValue;
+      captureResume(nextValue);
     }
   });
 
@@ -105,13 +120,46 @@
     }
   }
 
-  function optimizeResponseValue(value) {
-    if (!qualityBoost || typeof value !== "string") {
-      return qualityBoost ? optimizePlaybackData(value) : value;
+  // 小号取流后播放数据里的续播位置属于小号（通常为 0），把大号页面
+  // 下发的续播位置写回同一 cid 的取流响应，保留“上次看到”行为。
+  function applyResume(data, url) {
+    if (!resumeInfo || !data || typeof data !== "object") {
+      return data;
+    }
+
+    let cid;
+    try {
+      cid = Number(new URL(url, location.href).searchParams.get("cid"));
+    } catch {
+      return data;
+    }
+    const body = data.data || data.result;
+    if (cid !== resumeInfo.cid || !body || typeof body !== "object" || !isPlayData(body)) {
+      return data;
+    }
+
+    body.last_play_time = resumeInfo.time;
+    body.last_play_cid = resumeInfo.cid;
+    return data;
+  }
+
+  function transformResponse(data, url) {
+    if (!playbackEnabled) {
+      return data;
+    }
+    return applyResume(qualityBoost ? optimizePlaybackData(data) : data, url);
+  }
+
+  function optimizeResponseValue(value, url) {
+    if (!playbackEnabled) {
+      return value;
+    }
+    if (typeof value !== "string") {
+      return transformResponse(value, url);
     }
 
     try {
-      return JSON.stringify(optimizePlaybackData(JSON.parse(value)));
+      return JSON.stringify(transformResponse(JSON.parse(value), url));
     } catch {
       return value;
     }
@@ -138,7 +186,7 @@
         Object.defineProperty(this, name, {
           configurable: true,
           get() {
-            return optimizeResponseValue(descriptor.get.call(this));
+            return optimizeResponseValue(descriptor.get.call(this), xhrUrls.get(this));
           }
         });
       }
@@ -160,14 +208,11 @@
       Object.defineProperties(response, {
         text: {
           configurable: true,
-          value: async () => optimizeResponseValue(await originalText())
+          value: async () => optimizeResponseValue(await originalText(), url)
         },
         json: {
           configurable: true,
-          value: async () => {
-            const value = await originalJson();
-            return qualityBoost ? optimizePlaybackData(value) : value;
-          }
+          value: async () => transformResponse(await originalJson(), url)
         }
       });
       return response;
