@@ -140,6 +140,15 @@ header p {
   margin: 6px 0 14px;
 }
 
+.hint.warning {
+  margin-top: -6px;
+  padding: 8px 10px;
+  border-left: 3px solid #e0a33a;
+  border-radius: 0 6px 6px 0;
+  background: #fff8ea;
+  color: #8a5a12;
+}
+
 .toggle-row {
   display: flex;
   align-items: center;
